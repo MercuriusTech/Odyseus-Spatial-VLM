@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Depth Anything 3 Metric Demo</title>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.165.0/build/three.module.js"
+        }
+      }
+    </script>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0d0f12;
+        --panel: #161a20;
+        --panel-2: #1f252d;
+        --border: #2c3440;
+        --text: #eef2f7;
+        --muted: #98a3b3;
+        --accent: #7cc7ff;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--bg);
+        color: var(--text);
+        font: 14px/1.4 system-ui, sans-serif;
+      }
+
+      .app {
+        display: grid;
+        grid-template-columns: 340px 1fr;
+        min-height: 100vh;
+      }
+
+      .sidebar,
+      .viewer-wrap {
+        padding: 20px;
+      }
+
+      .sidebar {
+        border-right: 1px solid var(--border);
+        background: linear-gradient(180deg, #14181e 0%, #0f1317 100%);
+      }
+
+      h1,
+      h2,
+      p,
+      pre {
+        margin: 0;
+      }
+
+      h1 {
+        font-size: 20px;
+        margin-bottom: 6px;
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      .stack {
+        display: grid;
+        gap: 14px;
+        margin-top: 18px;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 14px;
+      }
+
+      label {
+        display: block;
+        font-size: 12px;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+
+      input,
+      button {
+        width: 100%;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--panel-2);
+        color: var(--text);
+        padding: 10px 12px;
+      }
+
+      button {
+        cursor: pointer;
+        background: #243141;
+        border-color: #314153;
+        color: var(--accent);
+        font-weight: 600;
+      }
+
+      .grid {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .preview {
+        width: 100%;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: #0b0d10;
+        object-fit: contain;
+        aspect-ratio: 1.2;
+      }
+
+      .viewer-wrap {
+        display: grid;
+        gap: 14px;
+        background: radial-gradient(circle at top, #161d26 0%, #0d0f12 55%);
+      }
+
+      #viewer {
+        min-height: 62vh;
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        overflow: hidden;
+        background: #090b0f;
+      }
+
+      pre {
+        white-space: pre-wrap;
+        color: #cfe0f5;
+      }
+
+      @media (max-width: 980px) {
+        .app {
+          grid-template-columns: 1fr;
+        }
+
+        .sidebar {
+          border-right: 0;
+          border-bottom: 1px solid var(--border);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <h1>DA3 Metric Large</h1>
+        <p class="muted">Upload one image, infer metric depth, project it into a point cloud, and inspect it in Three.js.</p>
+
+        <form id="demo-form" class="stack">
+          <div class="panel">
+            <label for="image">Image</label>
+            <input id="image" name="image" type="file" accept="image/*" required />
+          </div>
+
+          <div class="panel grid">
+            <div>
+              <label for="focal_px">Focal Length (px)</label>
+              <input id="focal_px" name="focal_px" type="number" min="1" step="1" placeholder="Auto" />
+            </div>
+            <div>
+              <label for="fov_deg">Fallback FOV (deg)</label>
+              <input id="fov_deg" name="fov_deg" type="number" min="10" max="140" step="1" value="60" />
+            </div>
+          </div>
+
+          <div class="panel">
+            <label for="max_points">Max Points</label>
+            <input id="max_points" name="max_points" type="number" min="1000" max="100000" step="1000" value="15000" />
+          </div>
+
+          <button id="submit" type="submit">Run Demo</button>
+        </form>
+
+        <div class="stack">
+          <div class="panel">
+            <label>Upload Preview</label>
+            <img id="upload-preview" class="preview" alt="Upload preview" />
+          </div>
+          <div class="panel">
+            <label>Depth Preview</label>
+            <img id="depth-preview" class="preview" alt="Depth preview" />
+          </div>
+          <div class="panel">
+            <label>Status</label>
+            <pre id="status">Idle.</pre>
+          </div>
+          <div class="panel">
+            <label>Metadata</label>
+            <pre id="meta">No result yet.</pre>
+          </div>
+        </div>
+      </aside>
+
+      <main class="viewer-wrap">
+        <div id="viewer"></div>
+      </main>
+    </div>
+
+    <script type="module" src="/index.js?v=3"></script>
+  </body>
+</html>
