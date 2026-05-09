@@ -88,6 +88,7 @@
       }
 
       input,
+      textarea,
       button {
         width: 100%;
         border-radius: 10px;
@@ -103,6 +104,11 @@
         border-color: #314153;
         color: var(--accent);
         font-weight: 600;
+      }
+
+      textarea {
+        min-height: 84px;
+        resize: vertical;
       }
 
       .grid {
@@ -163,6 +169,11 @@
             <input id="image" name="image" type="file" accept="image/*" required />
           </div>
 
+          <div class="panel">
+            <label for="prompt">Prompt</label>
+            <textarea id="prompt" name="prompt" placeholder="Example: select the chair I could sit on, the monitor on the desk, and the nearest door"></textarea>
+          </div>
+
           <div class="panel grid">
             <div>
               <label for="focal_px">Focal Length (px)</label>
@@ -190,6 +201,10 @@
           <div class="panel">
             <label>Depth Preview</label>
             <img id="depth-preview" class="preview" alt="Depth preview" />
+          </div>
+          <div class="panel">
+            <label>Prompt Targets</label>
+            <img id="annotated-preview" class="preview" alt="Annotated preview" />
           </div>
           <div class="panel">
             <label>Status</label>
