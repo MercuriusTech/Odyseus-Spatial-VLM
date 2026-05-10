@@ -1,0 +1,3 @@
+[submodule "Depth-Anything-3"]
+	path = Depth-Anything-3
+	url = https://github.com/ByteDance-Seed/Depth-Anything-3.git
