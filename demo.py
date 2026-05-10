@@ -54,6 +54,8 @@ MARKER_COLORS = {
     "box": "#ff44aa",
     "cabinet": "#668844",
 }
+DEFAULT_FOV_DEG = 60.0
+DEFAULT_MAX_POINTS = 15000
 
 
 def estimate_focal_px(width: int, height: int, fov_deg: float) -> float:
@@ -298,9 +300,6 @@ class DemoRuntime:
     def infer_image(
         self,
         image: Image.Image,
-        focal_px: float | None,
-        fov_deg: float,
-        max_points: int,
         prompt: str | None = None,
     ) -> dict:
         model = self.load_model()
@@ -317,7 +316,7 @@ class DemoRuntime:
         sky = prediction.sky[0] if prediction.sky is not None else None
 
         height, width = raw_depth.shape
-        used_focal_px = focal_px or estimate_focal_px(width, height, fov_deg)
+        used_focal_px = estimate_focal_px(width, height, DEFAULT_FOV_DEG)
         metric_depth_m = raw_depth * (used_focal_px / 300.0)
 
         fx = used_focal_px
@@ -332,7 +331,7 @@ class DemoRuntime:
             fy=fy,
             cx=cx,
             cy=cy,
-            max_points=max_points,
+            max_points=DEFAULT_MAX_POINTS,
             sky_mask=sky,
         )
 
@@ -372,7 +371,7 @@ class DemoRuntime:
                 "input_size": {"width": int(image.width), "height": int(image.height)},
                 "processed_size": {"width": int(width), "height": int(height)},
                 "focal_px": float(used_focal_px),
-                "fov_deg": None if focal_px is not None else float(fov_deg),
+                "fov_deg": float(DEFAULT_FOV_DEG),
                 "is_metric_model_output": True,
                 "prompt_used": prompt.strip() if prompt else None,
                 "target_count": len(targets_3d),
@@ -445,18 +444,8 @@ def build_app(runtime: DemoRuntime) -> FastAPI:
     @app.post("/api/infer")
     async def infer(
         image: UploadFile = File(...),
-        focal_px: float | None = Form(default=None),
-        fov_deg: float = Form(default=60.0),
-        max_points: int = Form(default=15000),
         prompt: str | None = Form(default=None),
     ) -> dict:
-        if max_points < 1000 or max_points > 100000:
-            raise HTTPException(status_code=400, detail="max_points must be between 1000 and 100000.")
-        if focal_px is not None and focal_px <= 0:
-            raise HTTPException(status_code=400, detail="focal_px must be positive.")
-        if focal_px is None and not (10.0 <= fov_deg <= 140.0):
-            raise HTTPException(status_code=400, detail="fov_deg must be between 10 and 140.")
-
         try:
             payload = await image.read()
             pil_image = Image.open(io.BytesIO(payload))
@@ -467,9 +456,6 @@ def build_app(runtime: DemoRuntime) -> FastAPI:
         try:
             return runtime.infer_image(
                 image=pil_image,
-                focal_px=focal_px,
-                fov_deg=fov_deg,
-                max_points=max_points,
                 prompt=prompt,
             )
         except Exception as exc:

@@ -17,6 +17,7 @@ import { OrbitControls } from "https://unpkg.com/three@0.165.0/examples/jsm/cont
   let pointsObject = null;
   let markerData = [];
   let markerSpheres = [];
+  let cameraGroup = null;
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x090b0f);
@@ -69,6 +70,16 @@ import { OrbitControls } from "https://unpkg.com/three@0.165.0/examples/jsm/cont
     box: 0xff44aa,
     cabinet: 0x668844,
   };
+  const TARGET_PALETTE = [
+    0xff4444,
+    0x44ff44,
+    0x4444ff,
+    0xff8800,
+    0x00ccff,
+    0xcc44cc,
+    0xffff00,
+    0x44cccc,
+  ];
 
   const tooltip = document.createElement("div");
   tooltip.style.cssText =
@@ -82,6 +93,25 @@ import { OrbitControls } from "https://unpkg.com/three@0.165.0/examples/jsm/cont
 
   function setStatus(text) {
     statusEl.textContent = text;
+  }
+
+  function renderTargetList(targets) {
+    if (!targets.length) {
+      metaEl.textContent = "No targets yet.";
+      return;
+    }
+    metaEl.innerHTML = targets
+      .map((target) => {
+        const color = `#${getMarkerColor(target.label, target.colorIndex).toString(16).padStart(6, "0")}`;
+        const coords = `${target.position.x.toFixed(2)}, ${target.position.y.toFixed(2)}, ${target.position.z.toFixed(2)}`;
+        return `
+          <div class="target-item">
+            <span class="target-swatch" style="background:${color}"></span>
+            <span>${target.label}  (${coords})</span>
+          </div>
+        `;
+      })
+      .join("");
   }
 
   function animate() {
@@ -108,11 +138,12 @@ import { OrbitControls } from "https://unpkg.com/three@0.165.0/examples/jsm/cont
     pointsObject.material.dispose();
     pointsObject = null;
     resetMarkers();
+    resetCameraContext();
   }
 
-  function getMarkerColor(label) {
+  function getMarkerColor(label, colorIndex = 0) {
     const base = label.replace(/_\d+$/, "").replace(/ \d+$/, "");
-    return MARKER_COLORS[base] || 0xff00ff;
+    return MARKER_COLORS[base] || TARGET_PALETTE[colorIndex % TARGET_PALETTE.length];
   }
 
   function createTextSprite(text, color, subtitle) {
@@ -174,13 +205,123 @@ import { OrbitControls } from "https://unpkg.com/three@0.165.0/examples/jsm/cont
     tooltip.style.display = "none";
   }
 
+  function resetCameraContext() {
+    if (!cameraGroup) {
+      return;
+    }
+    while (cameraGroup.children.length) {
+      const child = cameraGroup.children[0];
+      cameraGroup.remove(child);
+      if (child.geometry) child.geometry.dispose();
+      if (child.material) child.material.dispose();
+      if (child.line) {
+        child.line.geometry.dispose();
+        child.line.material.dispose();
+      }
+      if (child.cone) {
+        child.cone.geometry.dispose();
+        child.cone.material.dispose();
+      }
+    }
+    scene.remove(cameraGroup);
+    cameraGroup = null;
+  }
+
+  function updateCameraContext(markers) {
+    resetCameraContext();
+    cameraGroup = new THREE.Group();
+
+    const frustumDepth = 0.28;
+    const frustumHalfW = 0.18;
+    const frustumHalfH = 0.12;
+    const frustumPoints = [
+      new THREE.Vector3(0, 0, 0),
+      new THREE.Vector3(-frustumHalfW, frustumHalfH, -frustumDepth),
+      new THREE.Vector3(frustumHalfW, frustumHalfH, -frustumDepth),
+      new THREE.Vector3(frustumHalfW, -frustumHalfH, -frustumDepth),
+      new THREE.Vector3(-frustumHalfW, -frustumHalfH, -frustumDepth),
+    ];
+    const frustumIndices = [
+      [0, 1], [0, 2], [0, 3], [0, 4],
+      [1, 2], [2, 3], [3, 4], [4, 1],
+    ];
+    for (const [a, b] of frustumIndices) {
+      const line = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([frustumPoints[a], frustumPoints[b]]),
+        new THREE.LineBasicMaterial({ color: 0x7cc7ff, transparent: true, opacity: 0.95 })
+      );
+      cameraGroup.add(line);
+    }
+
+    const radius = pointsObject?.geometry?.boundingSphere?.radius || 1;
+    const defaultArrowLength = Math.max(0.1, radius * 0.06);
+    for (const marker of markers) {
+      const color = getMarkerColor(marker.label, marker.colorIndex);
+      const target = new THREE.Vector3(
+        marker.position.x,
+        marker.position.y,
+        marker.position.z
+      );
+      const distance = target.length();
+      if (distance < 1e-8) continue;
+      const arrowLength = Math.min(defaultArrowLength, distance);
+      const dir = target.clone().normalize();
+
+      const ray = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(0, 0, 0),
+          target.clone(),
+        ]),
+        new THREE.LineDashedMaterial({
+          color,
+          transparent: true,
+          opacity: 0.45,
+          dashSize: 0.035,
+          gapSize: 0.03,
+        })
+      );
+      ray.computeLineDistances();
+      cameraGroup.add(ray);
+
+      const headLength = Math.min(0.06, arrowLength * 0.32);
+      const shaftLength = Math.max(arrowLength - headLength, 0.02);
+      const shaftRadius = 0.018;
+      const headRadius = 0.045;
+      const material = new THREE.MeshBasicMaterial({ color });
+
+      const shaft = new THREE.Mesh(
+        new THREE.CylinderGeometry(shaftRadius, shaftRadius, shaftLength, 12),
+        material
+      );
+      shaft.position.copy(dir.clone().multiplyScalar(shaftLength * 0.5));
+      shaft.quaternion.setFromUnitVectors(
+        new THREE.Vector3(0, 1, 0),
+        dir
+      );
+      cameraGroup.add(shaft);
+
+      const cone = new THREE.Mesh(
+        new THREE.ConeGeometry(headRadius, headLength, 12),
+        material.clone()
+      );
+      cone.position.copy(dir.clone().multiplyScalar(shaftLength + headLength * 0.5));
+      cone.quaternion.setFromUnitVectors(
+        new THREE.Vector3(0, 1, 0),
+        dir
+      );
+      cameraGroup.add(cone);
+    }
+
+    scene.add(cameraGroup);
+  }
+
   function updateMarkers(markers) {
     resetMarkers();
     markerData = markers;
 
     for (const marker of markers) {
       const { x, y, z } = marker.position;
-      const color = getMarkerColor(marker.label);
+      const color = getMarkerColor(marker.label, marker.colorIndex);
       const coords = `(${x.toFixed(2)}, ${y.toFixed(2)}, ${z.toFixed(2)})`;
 
       const sphere = new THREE.Mesh(
@@ -279,17 +420,7 @@ import { OrbitControls } from "https://unpkg.com/three@0.165.0/examples/jsm/cont
 
     const formData = new FormData();
     formData.append("image", file);
-
-    const focalValue = document.getElementById("focal_px").value.trim();
-    const fovValue = document.getElementById("fov_deg").value.trim();
-    const maxPointsValue = document.getElementById("max_points").value.trim();
     const promptValue = promptInput.value.trim();
-
-    if (focalValue) {
-      formData.append("focal_px", focalValue);
-    }
-    formData.append("fov_deg", fovValue || "60");
-    formData.append("max_points", maxPointsValue || "15000");
     formData.append("prompt", promptValue);
 
     try {
@@ -307,15 +438,20 @@ import { OrbitControls } from "https://unpkg.com/three@0.165.0/examples/jsm/cont
       annotatedPreview.src = result.annotated_preview
         ? `data:image/png;base64,${result.annotated_preview}`
         : "";
-      metaEl.textContent = JSON.stringify(result.meta, null, 2);
+      const targets = (result.targets_3d || []).map((target, index) => ({
+        ...target,
+        colorIndex: index,
+      }));
+      renderTargetList(targets);
       loadPointCloud(result.points, result.colors);
-      updateMarkers(result.targets_3d || []);
+      updateMarkers(targets);
+      updateCameraContext(targets);
       setStatus(
         `Rendered ${result.meta.point_count} points and ${result.meta.target_count || 0} prompt targets.`
       );
     } catch (error) {
       setStatus(String(error));
-      metaEl.textContent = "No result.";
+      metaEl.textContent = "No targets yet.";
       annotatedPreview.src = "";
       resetPointCloud();
     } finally {

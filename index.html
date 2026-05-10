@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Depth Anything 3 Metric Demo</title>
+    <title>Odyseus-Spatial VLM Demo</title>
     <script type="importmap">
       {
         "imports": {
@@ -126,6 +126,16 @@
         aspect-ratio: 1.2;
       }
 
+      .upload-thumb {
+        width: 100%;
+        height: 180px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: #0b0d10;
+        object-fit: contain;
+        margin-top: 12px;
+      }
+
       .viewer-wrap {
         display: grid;
         gap: 14px;
@@ -145,6 +155,28 @@
         color: #cfe0f5;
       }
 
+      .target-list {
+        display: grid;
+        gap: 8px;
+      }
+
+      .target-item {
+        display: grid;
+        grid-template-columns: 12px 1fr;
+        gap: 10px;
+        align-items: start;
+        color: #cfe0f5;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 12px;
+      }
+
+      .target-swatch {
+        width: 12px;
+        height: 12px;
+        border-radius: 999px;
+        margin-top: 2px;
+      }
+
       @media (max-width: 980px) {
         .app {
           grid-template-columns: 1fr;
@@ -160,13 +192,14 @@
   <body>
     <div class="app">
       <aside class="sidebar">
-        <h1>DA3 Metric Large</h1>
+        <h1>Odyseus-Spatial VLM Demo</h1>
         <p class="muted">Upload one image, infer metric depth, project it into a point cloud, and inspect it in Three.js.</p>
 
         <form id="demo-form" class="stack">
           <div class="panel">
             <label for="image">Image</label>
             <input id="image" name="image" type="file" accept="image/*" required />
+            <img id="upload-preview" class="upload-thumb" alt="Upload preview" />
           </div>
 
           <div class="panel">
@@ -174,30 +207,10 @@
             <textarea id="prompt" name="prompt" placeholder="Example: select the chair I could sit on, the monitor on the desk, and the nearest door"></textarea>
           </div>
 
-          <div class="panel grid">
-            <div>
-              <label for="focal_px">Focal Length (px)</label>
-              <input id="focal_px" name="focal_px" type="number" min="1" step="1" placeholder="Auto" />
-            </div>
-            <div>
-              <label for="fov_deg">Fallback FOV (deg)</label>
-              <input id="fov_deg" name="fov_deg" type="number" min="10" max="140" step="1" value="60" />
-            </div>
-          </div>
-
-          <div class="panel">
-            <label for="max_points">Max Points</label>
-            <input id="max_points" name="max_points" type="number" min="1000" max="100000" step="1000" value="15000" />
-          </div>
-
           <button id="submit" type="submit">Run Demo</button>
         </form>
 
         <div class="stack">
-          <div class="panel">
-            <label>Upload Preview</label>
-            <img id="upload-preview" class="preview" alt="Upload preview" />
-          </div>
           <div class="panel">
             <label>Depth Preview</label>
             <img id="depth-preview" class="preview" alt="Depth preview" />
@@ -211,8 +224,8 @@
             <pre id="status">Idle.</pre>
           </div>
           <div class="panel">
-            <label>Metadata</label>
-            <pre id="meta">No result yet.</pre>
+            <label>Targets</label>
+            <div id="meta" class="target-list">No targets yet.</div>
           </div>
         </div>
       </aside>
