@@ -1,6 +1,9 @@
 # Odyseus Spatial VLM
 
+![Calibration Example](https://github.com/L42ARO/Fisheye-Calibration/blob/main/media/SpatialVLM-demo2-low-res.gif)
+
 I've been recently fascinated by the possibilites provided by recent advancements in monocular depth estimation models and decided to expeirment combining them with a capable VLM, so below is an example demo to get 3D outputs from a VLM that can be more useful for a physical AI agent.
+
 
 Quick Live Demo 👉 [app.odyseus.xyz](https://app.odyseus.xyz)
 
